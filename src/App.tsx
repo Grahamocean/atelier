@@ -5,6 +5,7 @@ import Projects from "./pages/Projects";
 import ProjectDetails from "./pages/ProjectDetails";
 import Studio from "./pages/Studio";
 import Contact from "./pages/Contact";
+import Footer from "./components/layout/Footer";
 import "./index.css";
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
           }
         />
       </Routes>
+      <Footer />
     </div>
   );
 }
