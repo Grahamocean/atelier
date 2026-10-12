@@ -1,256 +1,484 @@
+import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
   faArrowRight,
   faArrowUpRightFromSquare,
 } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
 import { projects } from "../data/projects";
 
+gsap.registerPlugin(ScrollTrigger, useGSAP);
+
 const ProjectDetails = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug } = useParams();
+  const pageRef = useRef<HTMLDivElement>(null);
 
-  const projectIndex = projects.findIndex((item) => item.slug === slug);
+  const project = projects.find((item) => item.slug === slug);
 
-  const project = projects[projectIndex];
+  const relatedProjects = project
+    ? projects
+        .filter(
+          (item) =>
+            item.slug !== project.slug && item.category === project.category,
+        )
+        .slice(0, 2)
+    : [];
+
+  const nextProject = project
+    ? projects[
+        (projects.findIndex((item) => item.slug === project.slug) + 1) %
+          projects.length
+      ]
+    : undefined;
+
+  useGSAP(
+    () => {
+      if (!project) return;
+
+      const media = gsap.matchMedia();
+
+      media.add("(prefers-reduced-motion: no-preference)", () => {
+        // Hero text
+        gsap.fromTo(
+          ".detail-hero-copy",
+          {
+            autoAlpha: 0,
+            y: 28,
+          },
+          {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.9,
+            stagger: 0.15,
+            ease: "power3.out",
+          },
+        );
+
+        // Hero image
+        gsap.fromTo(
+          ".detail-hero-image",
+          {
+            autoAlpha: 0,
+            scale: 1.035,
+          },
+          {
+            autoAlpha: 1,
+            scale: 1,
+            duration: 1.2,
+            delay: 0.2,
+            ease: "power2.out",
+          },
+        );
+
+        // Reveal content as it enters the viewport
+        gsap.utils
+          .toArray<HTMLElement>(".detail-reveal", pageRef.current)
+          .forEach((element) => {
+            gsap.fromTo(
+              element,
+              {
+                autoAlpha: 0,
+                y: 30,
+              },
+              {
+                autoAlpha: 1,
+                y: 0,
+                duration: 0.85,
+                ease: "power3.out",
+                scrollTrigger: {
+                  trigger: element,
+                  start: "top 88%",
+                  once: true,
+                },
+              },
+            );
+          });
+
+        // Related project cards
+        gsap.utils
+          .toArray<HTMLElement>(".detail-related-card", pageRef.current)
+          .forEach((card, index) => {
+            gsap.fromTo(
+              card,
+              {
+                autoAlpha: 0,
+                y: 25,
+              },
+              {
+                autoAlpha: 1,
+                y: 0,
+                duration: 0.8,
+                delay: index * 0.12,
+                ease: "power3.out",
+                scrollTrigger: {
+                  trigger: card,
+                  start: "top 88%",
+                  once: true,
+                },
+              },
+            );
+          });
+      });
+
+      return () => media.revert();
+    },
+    {
+      scope: pageRef,
+      dependencies: [slug],
+      revertOnUpdate: true,
+    },
+  );
 
   if (!project) {
     return (
-      <section className="flex min-h-[65vh] flex-col items-center justify-center bg-atelier-ivory px-6 text-center text-atelier-charcoal">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-atelier-olive">
-          Project not found
-        </p>
+      <section className="flex min-h-[70vh] items-center justify-center bg-atelier-ivory px-6 py-24">
+        <div className="max-w-xl text-center">
+          <p className="text-xs uppercase tracking-[0.22em] text-atelier-olive">
+            Project not found
+          </p>
 
-        <h1 className="mt-5 font-display text-4xl sm:text-5xl">
-          This space doesn't exist.
-        </h1>
+          <h1 className="mt-5 font-display text-4xl text-atelier-charcoal sm:text-5xl">
+            This project doesn&apos;t exist.
+          </h1>
 
-        <p className="mt-4 max-w-md text-sm leading-7 text-gray-600">
-          The project may have moved, or the link may be incorrect.
-        </p>
+          <p className="mt-5 text-sm leading-7 text-atelier-charcoal/65">
+            The project may have been moved, or the link may be incorrect.
+          </p>
 
-        <Link
-          to="/projects"
-          className="mt-8 inline-flex items-center gap-3 border border-atelier-charcoal px-6 py-3 text-sm transition-colors hover:bg-atelier-charcoal hover:text-atelier-ivory"
-        >
-          <FontAwesomeIcon icon={faArrowLeft} />
-          Back to projects
-        </Link>
+          <Link
+            to="/projects"
+            className="mt-8 inline-flex items-center gap-3 bg-atelier-charcoal px-6 py-4 text-xs text-white transition-colors hover:bg-atelier-olive"
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+            Back to projects
+          </Link>
+        </div>
       </section>
     );
   }
 
-  const nextProject = projects[(projectIndex + 1) % projects.length];
-
-  const relatedProjects = projects
-    .filter(
-      (item) =>
-        item.slug !== project.slug && item.category === project.category,
-    )
-    .slice(0, 2);
-
-  const displayedRelated =
-    relatedProjects.length > 0
-      ? relatedProjects
-      : projects.filter((item) => item.slug !== project.slug).slice(0, 2);
-
   return (
-    <main className="bg-atelier-ivory text-atelier-charcoal">
-      {/* Project heading */}
-      <section className="mx-auto max-w-7xl px-6 pb-10 pt-16 sm:px-10 md:pb-14 md:pt-24 lg:px-16">
-        <Link
-          to="/projects"
-          className="inline-flex items-center gap-3 text-xs uppercase tracking-[0.15em] text-gray-500 transition-colors hover:text-atelier-charcoal"
-        >
-          <FontAwesomeIcon icon={faArrowLeft} />
-          All projects
-        </Link>
+    <div ref={pageRef} className="overflow-hidden bg-atelier-ivory">
+      {/* Hero */}
+      <section className="px-6 pb-12 pt-32 sm:px-10 lg:px-16 lg:pb-16 lg:pt-40">
+        <div className="mx-auto max-w-7xl">
+          <Link
+            to="/projects"
+            className="detail-hero-copy inline-flex items-center gap-3 text-xs text-atelier-charcoal/65 transition-colors hover:text-atelier-olive"
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+            All projects
+          </Link>
 
-        <div className="mt-12 grid gap-8 md:grid-cols-12 md:items-end">
-          <div className="md:col-span-8">
-            <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-atelier-olive">
-              {project.category} / {project.year}
-            </p>
+          <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_0.55fr] lg:items-end">
+            <div>
+              <p className="detail-hero-copy mb-5 text-xs uppercase tracking-[0.22em] text-atelier-olive">
+                {project.category} / {project.year}
+              </p>
 
-            <h1 className="font-display text-5xl leading-[1.08] tracking-tight sm:text-6xl md:text-7xl">
-              {project.title}
-            </h1>
+              <h1 className="detail-hero-copy max-w-4xl font-display text-5xl leading-[1.08] tracking-tight text-atelier-charcoal sm:text-6xl lg:text-7xl">
+                {project.title}
+              </h1>
+            </div>
 
-            <p className="mt-5 text-sm text-gray-500">{project.location}</p>
+            <div className="detail-hero-copy lg:pb-2">
+              <p className="text-xs uppercase tracking-[0.18em] text-atelier-charcoal/50">
+                Location
+              </p>
+
+              <p className="mt-2 text-sm text-atelier-charcoal">
+                {project.location}
+              </p>
+
+              <p className="mt-6 max-w-md text-sm leading-7 text-atelier-charcoal/65">
+                {project.description}
+              </p>
+            </div>
           </div>
 
-          <p className="max-w-lg text-sm leading-7 text-gray-600 md:col-span-4 md:justify-self-end">
-            {project.description}
+          <div className="detail-hero-image mt-10 aspect-[4/3] overflow-hidden bg-atelier-stone sm:aspect-[16/9] lg:mt-14">
+            <img
+              src={project.image}
+              alt={`${project.title} architectural concept`}
+              fetchPriority="high"
+              className="h-full w-full object-cover"
+            />
+          </div>
+
+          <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-atelier-charcoal/50">
+            Architectural concept / {project.year}
           </p>
         </div>
       </section>
 
-      {/* Hero image */}
-      <section className="mx-auto max-w-[1600px] px-0 sm:px-10 lg:px-16">
-        <div className="aspect-[4/3] overflow-hidden bg-atelier-stone sm:aspect-[16/9]">
-          <img
-            src={project.image}
-            alt={`${project.title} concept`}
-            fetchPriority="high"
-            className="h-full w-full object-cover"
-          />
-        </div>
-      </section>
-
-      {/* Project information */}
-      <section className="mx-auto grid max-w-7xl gap-12 px-6 py-16 sm:px-10 md:grid-cols-12 md:gap-8 md:py-24 lg:px-16">
-        <div className="md:col-span-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-atelier-olive">
-            The project
+      {/* Project overview */}
+      <section className="px-6 py-16 sm:px-10 lg:px-16 lg:py-24">
+        <div className="detail-reveal mx-auto grid max-w-7xl gap-8 border-t border-atelier-charcoal/15 pt-8 md:grid-cols-[0.7fr_1.3fr] md:gap-16">
+          <p className="text-xs uppercase tracking-[0.22em] text-atelier-olive">
+            Project overview
           </p>
 
-          <h2 className="mt-5 font-display text-3xl leading-snug sm:text-4xl">
-            Designed around the way we live.
-          </h2>
-        </div>
+          <div>
+            <h2 className="max-w-4xl font-display text-3xl leading-tight text-atelier-charcoal sm:text-4xl lg:text-5xl">
+              A study in balance, material, and everyday experience.
+            </h2>
 
-        <div className="md:col-span-7 md:col-start-6">
-          <p className="text-base leading-8 text-gray-600">
-            {project.description}
-          </p>
-
-          <p className="mt-6 text-sm leading-8 text-gray-600">
-            This concept explores the relationship between material, natural
-            light, proportion, and everyday experience. The design direction
-            prioritises clarity and restraint, allowing each element to
-            contribute to a cohesive whole.
-          </p>
-
-          <div className="mt-10 grid grid-cols-2 gap-8 border-t border-atelier-stone pt-7 sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-gray-500">Discipline</p>
-              <p className="mt-2 text-sm">{project.category}</p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">Location</p>
-              <p className="mt-2 text-sm">{project.location}</p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">Year</p>
-              <p className="mt-2 text-sm">{project.year}</p>
-            </div>
+            <p className="mt-6 max-w-2xl text-sm leading-7 text-atelier-charcoal/65">
+              {project.description} This concept explores how thoughtful
+              proportions, natural materials, and a restrained design language
+              can work together to create a cohesive environment.
+            </p>
           </div>
         </div>
       </section>
 
       {/* Design approach */}
-      <section className="bg-[#EAE8E0]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-16 sm:px-10 md:grid-cols-2 md:items-center md:gap-16 md:py-24 lg:px-16">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-atelier-olive">
-              Design approach
-            </p>
+      <section className="bg-[#EDEBE4] px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="detail-reveal grid gap-8 md:grid-cols-2 md:items-end">
+            <div>
+              <p className="mb-4 text-xs uppercase tracking-[0.22em] text-atelier-olive">
+                Design approach
+              </p>
 
-            <h2 className="mt-5 max-w-xl font-display text-4xl leading-tight sm:text-5xl">
-              Less noise.
-              <span className="block italic">More meaning.</span>
-            </h2>
+              <h2 className="max-w-xl font-display text-4xl leading-tight text-atelier-charcoal sm:text-5xl">
+                Intentional choices. A coherent whole.
+              </h2>
+            </div>
+
+            <p className="max-w-lg text-sm leading-7 text-atelier-charcoal/65 md:justify-self-end">
+              The design direction focuses on simplicity without losing
+              character. Each decision supports the relationship between form,
+              function, light, and material.
+            </p>
           </div>
 
-          <div>
-            <p className="text-sm leading-8 text-gray-600">
-              Every design decision starts with a question: what does this space
-              need to do, and how should it feel? The concept brings together
-              thoughtful planning, considered materials, and a restrained visual
-              language to create a space with a clear identity.
+          <div className="mt-14 grid grid-cols-1 gap-8 sm:grid-cols-3">
+            <article className="detail-reveal border-t border-atelier-charcoal/20 pt-6">
+              <span className="font-display text-3xl italic text-atelier-olive">
+                01
+              </span>
+
+              <h3 className="mt-6 font-display text-2xl text-atelier-charcoal">
+                Spatial clarity
+              </h3>
+
+              <p className="mt-4 text-sm leading-7 text-atelier-charcoal/65">
+                A clear sense of proportion, circulation, and connection between
+                the different parts of the space.
+              </p>
+            </article>
+
+            <article className="detail-reveal border-t border-atelier-charcoal/20 pt-6">
+              <span className="font-display text-3xl italic text-atelier-olive">
+                02
+              </span>
+
+              <h3 className="mt-6 font-display text-2xl text-atelier-charcoal">
+                Material palette
+              </h3>
+
+              <p className="mt-4 text-sm leading-7 text-atelier-charcoal/65">
+                A restrained approach to finishes and textures that creates
+                visual depth without unnecessary decoration.
+              </p>
+            </article>
+
+            <article className="detail-reveal border-t border-atelier-charcoal/20 pt-6">
+              <span className="font-display text-3xl italic text-atelier-olive">
+                03
+              </span>
+
+              <h3 className="mt-6 font-display text-2xl text-atelier-charcoal">
+                Everyday function
+              </h3>
+
+              <p className="mt-4 text-sm leading-7 text-atelier-charcoal/65">
+                Design decisions guided by how people might move through, use,
+                and experience the environment.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* Project details */}
+      <section className="px-6 py-16 sm:px-10 lg:px-16 lg:py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="detail-reveal border-t border-atelier-charcoal/15 pt-8">
+            <p className="mb-8 text-xs uppercase tracking-[0.22em] text-atelier-olive">
+              At a glance
             </p>
 
-            <p className="mt-5 text-sm leading-8 text-gray-600">
-              The result is an exploration of timeless design principles rather
-              than passing trends.
-            </p>
+            <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+              <div>
+                <p className="text-xs text-atelier-charcoal/50">Project</p>
+                <p className="mt-3 text-sm text-atelier-charcoal">
+                  {project.title}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-atelier-charcoal/50">Category</p>
+                <p className="mt-3 text-sm text-atelier-charcoal">
+                  {project.category}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-atelier-charcoal/50">Year</p>
+                <p className="mt-3 text-sm text-atelier-charcoal">
+                  {project.year}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-atelier-charcoal/50">Location</p>
+                <p className="mt-3 text-sm text-atelier-charcoal">
+                  {project.location}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-atelier-charcoal/50">Discipline</p>
+                <p className="mt-3 text-sm text-atelier-charcoal">
+                  {project.category === "Residential"
+                    ? "Residential design"
+                    : project.category === "Commercial"
+                      ? "Commercial design"
+                      : "Interior design"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-atelier-charcoal/50">Status</p>
+                <p className="mt-3 text-sm text-atelier-charcoal">
+                  Concept study
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Related projects */}
-      <section className="mx-auto max-w-7xl px-6 py-16 sm:px-10 md:py-24 lg:px-16">
-        <div className="mb-10 flex items-end justify-between gap-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-atelier-olive">
-              Continue exploring
-            </p>
+      {relatedProjects.length > 0 && (
+        <section className="px-6 pb-20 sm:px-10 lg:px-16 lg:pb-28">
+          <div className="mx-auto max-w-7xl">
+            <div className="detail-reveal mb-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+              <div>
+                <p className="mb-4 text-xs uppercase tracking-[0.22em] text-atelier-olive">
+                  Continue exploring
+                </p>
 
-            <h2 className="mt-4 font-display text-3xl sm:text-4xl">
-              Related projects
-            </h2>
+                <h2 className="font-display text-4xl text-atelier-charcoal sm:text-5xl">
+                  Related concepts.
+                </h2>
+              </div>
+
+              <Link
+                to="/projects"
+                className="inline-flex w-fit items-center gap-3 text-xs text-atelier-charcoal transition-colors hover:text-atelier-olive"
+              >
+                All projects
+                <FontAwesomeIcon icon={faArrowRight} />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+              {relatedProjects.map((relatedProject) => (
+                <article
+                  key={relatedProject.slug}
+                  className="detail-related-card group"
+                >
+                  <Link
+                    to={`/projects/${relatedProject.slug}`}
+                    className="block"
+                  >
+                    <div className="aspect-[4/3] overflow-hidden bg-atelier-stone">
+                      <img
+                        src={relatedProject.image}
+                        alt={`${relatedProject.title} architectural concept`}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                      />
+                    </div>
+
+                    <div className="flex items-start justify-between gap-4 pt-5">
+                      <div>
+                        <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-atelier-olive">
+                          {relatedProject.category} / {relatedProject.year}
+                        </p>
+
+                        <h3 className="font-display text-2xl text-atelier-charcoal">
+                          {relatedProject.title}
+                        </h3>
+
+                        <p className="mt-2 text-xs text-atelier-charcoal/60">
+                          {relatedProject.location}
+                        </p>
+                      </div>
+
+                      <FontAwesomeIcon
+                        icon={faArrowRight}
+                        className="mt-2 text-sm text-atelier-charcoal/60 transition-transform duration-300 group-hover:translate-x-1"
+                      />
+                    </div>
+                  </Link>
+                </article>
+              ))}
+            </div>
           </div>
-
-          <Link
-            to="/projects"
-            className="hidden items-center gap-3 text-xs uppercase tracking-[0.12em] transition-colors hover:text-atelier-olive sm:inline-flex"
-          >
-            View all
-            <FontAwesomeIcon icon={faArrowRight} />
-          </Link>
-        </div>
-
-        <div className="grid gap-8 sm:grid-cols-2">
-          {displayedRelated.map((item) => (
-            <Link
-              key={item.slug}
-              to={`/projects/${item.slug}`}
-              className="group"
-            >
-              <div className="aspect-[4/3] overflow-hidden bg-atelier-stone">
-                <img
-                  src={item.image}
-                  alt={`${item.title} concept`}
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-                />
-              </div>
-
-              <div className="mt-5 flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-atelier-olive">
-                    {item.category} / {item.year}
-                  </p>
-
-                  <h3 className="mt-2 font-display text-2xl">{item.title}</h3>
-
-                  <p className="mt-2 text-xs text-gray-500">{item.location}</p>
-                </div>
-
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mt-1 text-sm transition-transform group-hover:-translate-y-1 group-hover:translate-x-1"
-                />
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Next project */}
-      <Link
-        to={`/projects/${nextProject.slug}`}
-        className="group block border-t border-atelier-stone"
-      >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-10 sm:px-10 md:py-14 lg:px-16">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-gray-500">
-              Next project
+      {nextProject && nextProject.slug !== project.slug && (
+        <section className="bg-atelier-charcoal px-6 py-16 sm:px-10 lg:px-16 lg:py-24">
+          <div className="mx-auto max-w-7xl">
+            <p className="detail-reveal mb-5 text-xs uppercase tracking-[0.22em] text-white/55">
+              Next concept
             </p>
 
-            <h2 className="mt-3 font-display text-3xl transition-colors group-hover:text-atelier-olive sm:text-4xl">
-              {nextProject.title}
-            </h2>
-          </div>
+            <Link
+              to={`/projects/${nextProject.slug}`}
+              className="detail-reveal group flex flex-col justify-between gap-6 sm:flex-row sm:items-end"
+            >
+              <div>
+                <p className="mb-3 text-xs text-white/55">
+                  {nextProject.category} / {nextProject.year}
+                </p>
 
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-atelier-stone transition-colors group-hover:border-atelier-charcoal group-hover:bg-atelier-charcoal group-hover:text-atelier-ivory">
-            <FontAwesomeIcon icon={faArrowRight} />
-          </span>
+                <h2 className="max-w-4xl font-display text-4xl leading-tight text-atelier-ivory transition-colors group-hover:text-[#D8D4CB] sm:text-5xl lg:text-7xl">
+                  {nextProject.title}
+                </h2>
+              </div>
+
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/30 text-atelier-ivory transition-all duration-300 group-hover:border-atelier-ivory group-hover:bg-atelier-ivory group-hover:text-atelier-charcoal">
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </span>
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Back to portfolio */}
+      <section className="px-6 py-10 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-7xl">
+          <Link
+            to="/projects"
+            className="inline-flex items-center gap-3 text-xs text-atelier-charcoal transition-colors hover:text-atelier-olive"
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+            Return to all projects
+          </Link>
         </div>
-      </Link>
-    </main>
+      </section>
+    </div>
   );
 };
 

@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   faArrowRight,
@@ -11,6 +11,8 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
+
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/xkjozkzj";
 
 const projectTypes = [
   "Architecture",
@@ -55,8 +57,11 @@ const initialForm: ContactForm = {
 
 const Contact = () => {
   const pageRef = useRef<HTMLDivElement>(null);
+
   const [form, setForm] = useState<ContactForm>(initialForm);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useGSAP(
     () => {
@@ -102,7 +107,7 @@ const Contact = () => {
   );
 
   const handleChange = (
-    event: React.ChangeEvent<
+    event: ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >,
   ) => {
@@ -113,16 +118,60 @@ const Contact = () => {
       [name]: value,
     }));
 
-    if (submitted) {
-      setSubmitted(false);
-    }
+    setSubmitError("");
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Front-end demonstration only: no email or API request is made.
-    setSubmitted(true);
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const response = await fetch(FORMSPREE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          projectType: form.projectType,
+          budget: form.budget || "Not specified",
+          timeline: form.timeline || "Not specified",
+          message: form.message.trim(),
+          _subject: `New Atelier inquiry from ${form.name.trim()}`,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const serviceMessage = Array.isArray(result?.errors)
+          ? result.errors
+              .map((error: { message?: string }) => error.message)
+              .filter(Boolean)
+              .join(" ")
+          : "";
+
+        throw new Error(
+          serviceMessage || "Your inquiry could not be sent. Please try again.",
+        );
+      }
+
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const fieldClassName =
@@ -245,9 +294,8 @@ const Contact = () => {
                 </p>
 
                 <p className="mt-3 text-sm leading-7 text-atelier-charcoal/70">
-                  Your form passed the front-end validation. This is a
-                  demonstration form, so your inquiry has not actually been sent
-                  or saved.
+                  Your inquiry has been accepted by the form service. Thank you
+                  for getting in touch with Atelier.
                 </p>
 
                 <button
@@ -255,6 +303,7 @@ const Contact = () => {
                   onClick={() => {
                     setForm(initialForm);
                     setSubmitted(false);
+                    setSubmitError("");
                   }}
                   className="mt-6 inline-flex items-center gap-3 border-b border-atelier-charcoal pb-2 text-xs text-atelier-charcoal transition-colors hover:text-atelier-olive"
                 >
@@ -394,17 +443,32 @@ const Contact = () => {
                   />
                 </div>
 
+                {submitError && (
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    className="border border-red-300 bg-red-50 p-4 text-sm leading-6 text-red-800"
+                  >
+                    {submitError}
+                    <p className="mt-1">
+                      Your inquiry has not been confirmed as sent. Please try
+                      again.
+                    </p>
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-5 bg-atelier-charcoal px-7 py-4 text-xs text-white transition-colors duration-300 hover:bg-atelier-olive"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-5 bg-atelier-charcoal px-7 py-4 text-xs text-white transition-colors duration-300 hover:bg-atelier-olive disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Submit inquiry
-                  <FontAwesomeIcon icon={faArrowRight} />
+                  {isSubmitting ? "Sending inquiry..." : "Submit inquiry"}
+                  {!isSubmitting && <FontAwesomeIcon icon={faArrowRight} />}
                 </button>
 
                 <p className="text-xs leading-6 text-atelier-charcoal/50">
-                  Demonstration only. This form does not send or store your
-                  information.
+                  Your details will be submitted securely to our contact form
+                  service for delivery to the configured inbox.
                 </p>
               </form>
             )}

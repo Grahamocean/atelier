@@ -127,7 +127,7 @@ const Home = () => {
               <div className="home-hero-copy mt-9 flex flex-wrap items-center gap-6">
                 <Link
                   to="/projects"
-                  className="inline-flex items-center gap-4 bg-atelier-charcoal px-6 py-4 text-xs text-white transition-colors hover:bg-atelier-olive"
+                  className="inline-flex items-center gap-4 hover:bg-atelier-charcoal px-6 py-4 text-xs text-white transition-colors hover:text-white bg-atelier-olive"
                 >
                   Explore our work
                   <FontAwesomeIcon icon={faArrowRight} />
