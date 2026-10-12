@@ -105,9 +105,7 @@ const Footer = () => {
             © {currentYear} Atelier Studio. All rights reserved.
           </p>
 
-          <p className="text-xs text-white/40">
-            An independent design concept.
-          </p>
+          <p className="text-xs text-white/40">An Akanbi design concept.</p>
 
           <button
             type="button"
